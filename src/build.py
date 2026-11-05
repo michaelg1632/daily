@@ -7,7 +7,7 @@ NAMES = ['apfel', 'erde', 'uhr', 'auto', 'hand', 'lego', 'klettern', 'birne', 'b
 SHARED = ['data.js', 'core.js', 'views.js', 'sheets.js', 'actions.js']
 BODY = '''<div class="shell">
   <header class="top">
-    <div class="brand">Tagwerk</div>
+    <div class="brand">Daily</div>
     <nav class="nav" id="nav" aria-label="Bereiche"></nav>
   </header>
   <div id="banner"></div>
@@ -16,7 +16,7 @@ BODY = '''<div class="shell">
 <nav class="tabs" id="tabs" aria-label="Bereiche"></nav>
 <div id="sheet" hidden></div>
 <div id="toast" role="status" hidden></div>
-<div id="splash" role="button" tabindex="0" aria-label="Tagwerk öffnen"></div>
+<div id="splash" role="button" tabindex="0" aria-label="Daily öffnen"></div>
 <datalist id="ex-list"></datalist>
 '''
 def script(platform, art):
@@ -24,7 +24,7 @@ def script(platform, art):
     return '"use strict";\n' + parts + '\nconst ART={' + art + '};\n' + read('splash.js')
 def artifact():
     art = ','.join("%s:'data:image/webp;base64,%s'" % (n, base64.b64encode(open(os.path.join(src, 'img', n + '.webp'), 'rb').read()).decode()) for n in NAMES)
-    html = f'''<title>Tagwerk</title>
+    html = f'''<title>Daily</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700&display=swap">
@@ -61,12 +61,12 @@ def web():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tagwerk</title>
+<title>Daily</title>
 <meta name="description" content="Dein Planer für Projekte, Ziele und den Alltag.">
 <meta name="theme-color" content="#C4ECFC">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Tagwerk">
+<meta name="apple-mobile-web-app-title" content="Daily">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -92,7 +92,7 @@ body{{margin:0}}img{{max-width:100%}}
     shutil.copy(os.path.join(src, 'config.js'), os.path.join(out, 'config.js'))
     for n in ['icon-180.png', 'icon-192.png', 'icon-512.png']:
         shutil.copy(os.path.join(root, 'assets', n), os.path.join(out, n))
-    write('manifest.webmanifest', json.dumps({'name': 'Tagwerk', 'short_name': 'Tagwerk', 'lang': 'de', 'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'portrait', 'background_color': '#E6F7FF', 'theme_color': '#C4ECFC',
+    write('manifest.webmanifest', json.dumps({'name': 'Daily', 'short_name': 'Daily', 'lang': 'de', 'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'portrait', 'background_color': '#E6F7FF', 'theme_color': '#C4ECFC',
         'icons': [{'src': 'icon-192.png', 'sizes': '192x192', 'type': 'image/png'}, {'src': 'icon-512.png', 'sizes': '512x512', 'type': 'image/png'}]}, ensure_ascii=False, indent=1))
     core = ['./', 'config.js', 'fb.js', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'] + [f'img/{n}.webp' for n in NAMES] + ['fonts/' + f for f in sorted(os.listdir(os.path.join(out, 'fonts')))]
     write('sw.js', read('sw.js').replace('__CORE__', json.dumps(core)))

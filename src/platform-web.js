@@ -17,7 +17,7 @@ function loginScreen(F){
     let mode='in',mail='';
     const draw=()=>{
       el.innerHTML=`<form class="login-card" id="login-form" novalidate>
-        <div class="brand">Tagwerk</div>
+        <div class="brand">Daily</div>
         <p class="lead">${mode==='in'?'Melde dich an, um zu deinen Daten zu kommen.':'Lege dein Konto an. Das machst du nur einmal.'}</p>
         <div class="fld"><label for="l-mail">E-Mail</label><input type="email" id="l-mail" value="${esc(mail)}" autocomplete="username" inputmode="email" autocapitalize="off" required></div>
         <div class="fld"><label for="l-pass">Passwort</label><input type="password" id="l-pass" autocomplete="${mode==='in'?'current-password':'new-password'}" required></div>
@@ -51,7 +51,7 @@ function loginScreen(F){
 }
 const PLATFORM={
   web:true,
-  localNote:'Tagwerk speichert gerade nur auf diesem Gerät.',
+  localNote:'Daily speichert gerade nur auf diesem Gerät.',
   async db(){
     const cfg=window.TAGWERK_FIREBASE,F=window.FB;
     if(!cfg?.apiKey||!F)return null;

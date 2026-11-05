@@ -49,7 +49,7 @@ function createActivities(f){
   }
 }
 async function exportAll(){
-  const data=JSON.stringify({app:'Tagwerk',date:today(),data:S},null,1),filename=`tagwerk-sicherung-${today()}.json`;
+  const data=JSON.stringify({app:'Daily',date:today(),data:S},null,1),filename=`daily-sicherung-${today()}.json`;
   try{if(await PLATFORM.save(data,filename)){toast('Sicherung gespeichert');return}}
   catch(e){if(e?.code==='declined')return}
   try{await navigator.clipboard.writeText(data);toast('Daten in die Zwischenablage kopiert')}catch{toast('Sichern ist in dieser Ansicht nicht möglich.')}

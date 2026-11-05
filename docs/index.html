@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Tagwerk</title>
+<title>Daily</title>
 <meta name="description" content="Dein Planer für Projekte, Ziele und den Alltag.">
 <meta name="theme-color" content="#C4ECFC">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Tagwerk">
+<meta name="apple-mobile-web-app-title" content="Daily">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -373,7 +373,7 @@ textarea{resize:vertical;min-height:80px;display:block}
 <body>
 <div class="shell">
   <header class="top">
-    <div class="brand">Tagwerk</div>
+    <div class="brand">Daily</div>
     <nav class="nav" id="nav" aria-label="Bereiche"></nav>
   </header>
   <div id="banner"></div>
@@ -382,7 +382,7 @@ textarea{resize:vertical;min-height:80px;display:block}
 <nav class="tabs" id="tabs" aria-label="Bereiche"></nav>
 <div id="sheet" hidden></div>
 <div id="toast" role="status" hidden></div>
-<div id="splash" role="button" tabindex="0" aria-label="Tagwerk öffnen"></div>
+<div id="splash" role="button" tabindex="0" aria-label="Daily öffnen"></div>
 <datalist id="ex-list"></datalist>
 
 <script src="config.js"></script>
@@ -459,7 +459,7 @@ const PENDING_QUOTES=[
 ];
 
 /* ---------- Plattform: eigene Web-App mit Firebase ---------- */
-const APP_VERSION='20261105180328';
+const APP_VERSION='20261105182153';
 let fbAuth=null;
 const AUTH_ERRORS={
   'auth/invalid-credential':'E-Mail oder Passwort stimmt nicht.',
@@ -477,7 +477,7 @@ function loginScreen(F){
     let mode='in',mail='';
     const draw=()=>{
       el.innerHTML=`<form class="login-card" id="login-form" novalidate>
-        <div class="brand">Tagwerk</div>
+        <div class="brand">Daily</div>
         <p class="lead">${mode==='in'?'Melde dich an, um zu deinen Daten zu kommen.':'Lege dein Konto an. Das machst du nur einmal.'}</p>
         <div class="fld"><label for="l-mail">E-Mail</label><input type="email" id="l-mail" value="${esc(mail)}" autocomplete="username" inputmode="email" autocapitalize="off" required></div>
         <div class="fld"><label for="l-pass">Passwort</label><input type="password" id="l-pass" autocomplete="${mode==='in'?'current-password':'new-password'}" required></div>
@@ -511,7 +511,7 @@ function loginScreen(F){
 }
 const PLATFORM={
   web:true,
-  localNote:'Tagwerk speichert gerade nur auf diesem Gerät.',
+  localNote:'Daily speichert gerade nur auf diesem Gerät.',
   async db(){
     const cfg=window.TAGWERK_FIREBASE,F=window.FB;
     if(!cfg?.apiKey||!F)return null;
@@ -851,7 +851,7 @@ function thoughtBlock(d){
 }
 function welcomeBlock(){
   if(projectIds().length||acts().length||dailyTasks().length)return'';
-  return`<section><div class="sec-head"><h2>Willkommen bei Tagwerk</h2></div>
+  return`<section><div class="sec-head"><h2>Willkommen bei Daily</h2></div>
   <p class="lead">Lege für jeden Bereich deines Lebens ein Projekt an, zum Beispiel Gesundheit, Finanzen oder ein eigenes Vorhaben. Danach planst du Aktivitäten und verfolgst deine Ziele.</p>
   <button class="btn" data-a="projectNew">Erstes Projekt anlegen</button></section>`;
 }
@@ -1303,7 +1303,7 @@ function createActivities(f){
   }
 }
 async function exportAll(){
-  const data=JSON.stringify({app:'Tagwerk',date:today(),data:S},null,1),filename=`tagwerk-sicherung-${today()}.json`;
+  const data=JSON.stringify({app:'Daily',date:today(),data:S},null,1),filename=`daily-sicherung-${today()}.json`;
   try{if(await PLATFORM.save(data,filename)){toast('Sicherung gespeichert');return}}
   catch(e){if(e?.code==='declined')return}
   try{await navigator.clipboard.writeText(data);toast('Daten in die Zwischenablage kopiert')}catch{toast('Sichern ist in dieser Ansicht nicht möglich.')}

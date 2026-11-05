@@ -79,7 +79,7 @@ function thoughtBlock(d){
 }
 function welcomeBlock(){
   if(projectIds().length||acts().length||dailyTasks().length)return'';
-  return`<section><div class="sec-head"><h2>Willkommen bei Tagwerk</h2></div>
+  return`<section><div class="sec-head"><h2>Willkommen bei Daily</h2></div>
   <p class="lead">Lege für jeden Bereich deines Lebens ein Projekt an, zum Beispiel Gesundheit, Finanzen oder ein eigenes Vorhaben. Danach planst du Aktivitäten und verfolgst deine Ziele.</p>
   <button class="btn" data-a="projectNew">Erstes Projekt anlegen</button></section>`;
 }

@@ -1,4 +1,4 @@
-# Tagwerk
+# Daily
 
 Persönlicher Planer für Projekte, Ziele, Aktivitäten und Daily Tasks.
 Dieses Repository enthält nur den Programmcode. Persönliche Daten liegen ausschließlich in Firebase und sind durch Anmeldung und Zugriffsregeln geschützt.
