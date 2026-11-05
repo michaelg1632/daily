@@ -66,7 +66,7 @@ const PLATFORM={
     const fire=p=>{p.catch(()=>{ui.saveError=true;renderBanner()});return Promise.resolve()};
     return{
       collection:c=>({onSnapshot:(next,err)=>F.onSnapshot(F.collection(fs,'users',uid,c),{includeMetadataChanges:true},q=>next({docs:q.docs.map(d=>({id:d.id,data:()=>d.data()})),metadata:q.metadata}),err)}),
-      doc:p=>{const[c,id]=p.split('/'),r=F.doc(fs,'users',uid,c,id);return{set:d=>fire(F.setDoc(r,d)),delete:()=>fire(F.deleteDoc(r))}}
+      doc:p=>{const[c,id]=p.split('/'),r=F.doc(fs,'users',uid,c,id);return{set:d=>fire(F.setDoc(r,d)),delete:()=>fire(F.deleteDoc(r)),get:async()=>{const s=await F.getDoc(r);return s.exists()?s.data():null}}}
     };
   },
   async logout(){await flush();await window.FB.signOut(fbAuth);location.reload()},

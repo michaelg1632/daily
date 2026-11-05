@@ -368,6 +368,16 @@ textarea{resize:vertical;min-height:80px;display:block}
   .tpl{grid-template-columns:minmax(0,1fr)}
   .plist{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Fotos */
+.ph-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.ph{padding:0;border:0;background:none;border-radius:12px;overflow:hidden;aspect-ratio:1;cursor:pointer;display:block;width:100%}
+.ph img{display:block;width:100%;height:100%;object-fit:cover}
+.ph-add{position:relative;cursor:pointer;text-align:center}
+.ph-add input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.ph-add:focus-within{outline:2px solid var(--pen);outline-offset:2px}
+.pv-box{display:flex;justify-content:center;margin-bottom:12px}
+#pv{display:block;max-width:100%;max-height:68vh;object-fit:contain;border-radius:12px}
 </style>
 </head>
 <body>
@@ -459,7 +469,7 @@ const PENDING_QUOTES=[
 ];
 
 /* ---------- Plattform: eigene Web-App mit Firebase ---------- */
-const APP_VERSION='20261105182153';
+const APP_VERSION='20261105185001';
 let fbAuth=null;
 const AUTH_ERRORS={
   'auth/invalid-credential':'E-Mail oder Passwort stimmt nicht.',
@@ -526,7 +536,7 @@ const PLATFORM={
     const fire=p=>{p.catch(()=>{ui.saveError=true;renderBanner()});return Promise.resolve()};
     return{
       collection:c=>({onSnapshot:(next,err)=>F.onSnapshot(F.collection(fs,'users',uid,c),{includeMetadataChanges:true},q=>next({docs:q.docs.map(d=>({id:d.id,data:()=>d.data()})),metadata:q.metadata}),err)}),
-      doc:p=>{const[c,id]=p.split('/'),r=F.doc(fs,'users',uid,c,id);return{set:d=>fire(F.setDoc(r,d)),delete:()=>fire(F.deleteDoc(r))}}
+      doc:p=>{const[c,id]=p.split('/'),r=F.doc(fs,'users',uid,c,id);return{set:d=>fire(F.setDoc(r,d)),delete:()=>fire(F.deleteDoc(r)),get:async()=>{const s=await F.getDoc(r);return s.exists()?s.data():null}}}
     };
   },
   async logout(){await flush();await window.FB.signOut(fbAuth);location.reload()},
@@ -581,6 +591,8 @@ const sameName=(a,b)=>String(a).trim().toLowerCase()===String(b).trim().toLowerC
 const shortTitle=t=>{const i=String(t).indexOf(' - ');return i>0?t.slice(i+3):t};
 
 /* ---------- Speicher ---------- */
+const MAX_PHOTOS=12,THUMB=240,PHOTO_LIMIT=900000;
+const canPhoto=()=>PLATFORM.web&&!ui.local&&!!db;
 const COLS=['projects','activities','measurements','dailytasks','dailylog','targets','setbacks'];
 const S=Object.fromEntries(COLS.map(c=>[c,{}]));
 const ui={view:'heute',proj:null,act:null,back:'heute',sel:today(),month:null,dsel:null,edit:false,open:new Set(),metric:null,range:90,ready:false,local:false,stale:false,saveError:false};
@@ -660,9 +672,9 @@ const metricsOf=id=>P(id).metrics||[];
 const groupsOf=id=>P(id).groups||[];
 const metricOf=(pid,id)=>metricsOf(pid).find(x=>x.id===id);
 function fieldsOf(id){
-  if(!hasProject(id))return{checklist:true,duration:true,sets:false};
+  if(!hasProject(id))return{checklist:true,duration:true,sets:false,photos:true};
   const p=P(id),f=p.fields||{};
-  return{checklist:f.checklist!==false,duration:f.duration!==false,sets:f.sets??!!p.training};
+  return{checklist:f.checklist!==false,duration:f.duration!==false,sets:f.sets??!!p.training,photos:f.photos===true};
 }
 const colorOf=id=>P(id).color||'';
 function itemsOf(pid,gid){
@@ -797,6 +809,7 @@ function actSummary(a){
   if(a.duration)out.push(a.duration+' Min.');
   if(cl.length)out.push(`${cl.filter(c=>c.done).length} von ${cl.length} Punkten`);
   if(ex.length)out.push(`${plural(ex.length,'Übung','Übungen')}, ${plural(ex.reduce((n,e)=>n+(e.sets||[]).length,0),'Satz','Sätze')}`);
+  if(a.photos?.length)out.push(plural(a.photos.length,'Foto','Fotos'));
   return out.map(x=>`<span>${x}</span>`).join('');
 }
 function actRow(a,when,inProject){
@@ -919,6 +932,12 @@ function checklistBlock(a){
   ${l.map(c=>`<div class="task ${c.done?'done':''}"><button class="box" data-a="clTick" data-c="${c.id}" aria-pressed="${!!c.done}" aria-label="${esc(c.text)} abhaken">${ICON.tick}</button><div class="t-text">${esc(c.text)}</div><button class="x" data-a="clDel" data-c="${c.id}" aria-label="${esc(c.text)} löschen">${ICON.cross}</button></div>`).join('')}
   <form class="addline" data-f="check"><input type="text" id="cl-text" name="text" placeholder="Punkt hinzufügen" aria-label="Punkt hinzufügen" autocomplete="off" required><button class="btn">Hinzufügen</button></form></section>`;
 }
+function photoBlock(a){
+  const l=a.photos||[],full=l.length>=MAX_PHOTOS;
+  return`<section><div class="sec-head"><h2>Fotos</h2>${l.length?`<span class="sec-meta">${l.length} von ${MAX_PHOTOS}</span>`:''}</div>
+  ${l.length?`<div class="ph-grid">${l.map((p,i)=>`<button class="ph" data-a="phOpen" data-id="${esc(p.id)}" aria-label="Foto ${i+1} öffnen"><img src="${esc(p.thumb)}" alt=""></button>`).join('')}</div>`:''}
+  ${full?'':`<label class="btn ghost wide ph-add"><input type="file" id="ph-in" accept="image/*" multiple aria-label="Fotos hinzufügen">Fotos hinzufügen</label>`}</section>`;
+}
 function lastExercise(name,a){
   const l=acts().filter(x=>x.id!==a.id&&x.date<=a.date&&(x.exercises||[]).some(e=>sameName(e.name,name)&&(e.sets||[]).some(s=>s.kg!=null||s.reps!=null))).sort(byTime);
   const p=l[l.length-1];return p?p.exercises.find(e=>sameName(e.name,name)):null;
@@ -965,6 +984,7 @@ function viewActivity(){
     ${f.checklist?checklistBlock(a):''}
     ${f.sets?exerciseBlock(a):''}
     <div class="fld"><label for="a-note">Notiz</label><textarea id="a-note" data-af="note" placeholder="Wie lief es?">${esc(a.note||'')}</textarea></div>
+    ${canPhoto()&&(f.photos||a.photos?.length)?photoBlock(a):''}
     ${st==='done'?'':'<button class="btn" data-a="finish">Als erledigt speichern</button>'}
   </div>`;
 }
@@ -1172,6 +1192,15 @@ function sheetProjectNew(){
     <fieldset class="fld"><legend>Womit möchtest du starten?</legend><div class="tpl">${TEMPLATES.map((t,i)=>`<label class="tpl-o"><input type="radio" name="template" value="${t.id}" ${i?'':'checked'}><span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></span></label>`).join('')}</div></fieldset>
     ${acts2()}</form>`,'#n-name');
 }
+function sheetPhoto(aid,pid){
+  const l=S.activities[aid]?.photos||[],i=l.findIndex(p=>p.id===pid);if(i<0){closeSheet();return}
+  const o=sheetOpener,many=l.length>1,go=d=>`data-aid="${esc(aid)}" data-id="${esc(l[(i+d+l.length)%l.length].id)}"`;
+  openSheet(`<div class="pv-box"><img id="pv" data-id="${esc(pid)}" src="${esc(photoFull.get(pid)||l[i].thumb)}" alt="Foto ${i+1} von ${l.length}"></div>
+    <p class="note flat" id="pv-note" hidden></p>
+    <div class="panel-acts">${delBtn('phDel',`data-aid="${esc(aid)}" data-id="${esc(pid)}"`)}${many?`<button type="button" class="btn ghost" data-a="phOpen" ${go(-1)} aria-label="Vorheriges Foto">‹</button><button type="button" class="btn ghost" data-a="phOpen" ${go(1)} aria-label="Nächstes Foto">›</button>`:''}<button type="button" class="btn" data-a="close">Schließen</button></div>`);
+  if(o)sheetOpener=o;
+  loadPhoto(pid);
+}
 function sheetProject(id){
   const p=P(id),f=fieldsOf(id);
   openSheet(`<h2>Projekt-Einstellungen</h2><form class="form" data-f="project" data-id="${esc(id)}">
@@ -1180,7 +1209,8 @@ function sheetProject(id){
     <fieldset class="fld"><legend>Felder in Aktivitäten</legend><div class="opts">
       <label class="opt"><input type="checkbox" name="f" value="duration" ${f.duration?'checked':''}><span>Dauer</span></label>
       <label class="opt"><input type="checkbox" name="f" value="checklist" ${f.checklist?'checked':''}><span>Checkliste</span></label>
-      <label class="opt"><input type="checkbox" name="f" value="sets" ${f.sets?'checked':''}><span>Übungen und Sätze</span></label></div></fieldset>
+      <label class="opt"><input type="checkbox" name="f" value="sets" ${f.sets?'checked':''}><span>Übungen und Sätze</span></label>${canPhoto()?`
+      <label class="opt"><input type="checkbox" name="f" value="photos" ${f.photos?'checked':''}><span>Fotos</span></label>`:''}</div></fieldset>
     <div class="fld"><label for="n-quick">Schnellauswahl für Aktivitäten</label><input type="text" id="n-quick" name="quick" value="${esc((p.quick||[]).join(', '))}" autocomplete="off" placeholder="Mit Komma trennen"></div>
     <p class="note flat">Beim Löschen bleiben Aktivitäten im Kalender, gehören dann aber zu keinem Projekt mehr. Ziele und Rückschläge des Projekts werden mitgelöscht.</p>
     ${acts2(delBtn('projectDel',`data-id="${esc(id)}"`))}</form>`);
@@ -1317,6 +1347,63 @@ async function importBackup(file){
   }catch{toast('Diese Datei konnte nicht gelesen werden.')}
 }
 
+/* ---------- Fotos ----------
+   Vorschaubilder liegen klein in der Aktivität. Die großen Fotos liegen einzeln in der Sammlung photos
+   und werden erst beim Öffnen geladen, damit die App schnell bleibt. */
+const photoFull=new Map();
+function readImage(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{res(img);setTimeout(()=>URL.revokeObjectURL(url),1000)};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('bild'))};
+    img.src=url;
+  });
+}
+function paint(img,w,h,sx,sy,sw,sh,q){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(img,sx,sy,sw,sh,0,0,w,h);
+  return c.toDataURL('image/jpeg',q);
+}
+function shrinkPhoto(img){
+  const W=img.naturalWidth,H=img.naturalHeight;
+  for(const[side,q]of[[1600,.8],[1600,.65],[1200,.65],[1000,.55],[800,.5]]){
+    const k=Math.min(1,side/Math.max(W,H)),data=paint(img,Math.round(W*k),Math.round(H*k),0,0,W,H,q);
+    if(data.length<=PHOTO_LIMIT)return data;
+  }
+  throw new Error('gross');
+}
+function thumbOf(img){
+  const W=img.naturalWidth,H=img.naturalHeight,s=Math.min(W,H);
+  return paint(img,THUMB,THUMB,(W-s)/2,(H-s)/2,s,s,.55);
+}
+async function addPhotos(files,aid){
+  const room=MAX_PHOTOS-(S.activities[aid]?.photos||[]).length,list=files.slice(0,Math.max(0,room));
+  if(files.length>list.length)toast(`Pro Aktivität passen ${MAX_PHOTOS} Fotos.`);
+  let ok=0,bad=0;
+  if(list.length)toast(list.length>1?'Fotos werden eingefügt':'Foto wird eingefügt');
+  for(const file of list){
+    try{
+      const img=await readImage(file),data=shrinkPhoto(img),thumb=thumbOf(img),id=uid(),a=S.activities[aid];
+      if(!a)return;
+      await db.doc('photos/'+id).set({activityId:aid,data,at:new Date().toISOString()});
+      photoFull.set(id,data);
+      put('activities',aid,{...clone(S.activities[aid]),photos:[...(S.activities[aid].photos||[]),{id,thumb}]},false);
+      softRender();ok++;
+    }catch{bad++}
+  }
+  if(bad)toast(ok?`${plural(bad,'Foto','Fotos')} konnte nicht eingefügt werden.`:'Das Foto konnte nicht gelesen werden.');
+  else if(ok)toast(plural(ok,'Foto','Fotos')+' gespeichert');
+}
+async function loadPhoto(id){
+  const show=src=>{const i=document.getElementById('pv');if(i?.dataset.id===id&&src)i.src=src};
+  if(photoFull.has(id)){show(photoFull.get(id));return}
+  const say=()=>{const n=document.getElementById('pv-note');if(n&&document.getElementById('pv')?.dataset.id===id){n.textContent='Das ist die Vorschau. Das große Foto lädt, sobald es verfügbar ist.';n.hidden=false}};
+  try{
+    const d=await db.doc('photos/'+id).get();
+    if(d?.data){photoFull.set(id,d.data);show(d.data)}else say();
+  }catch{say()}
+}
+
 /* ---------- Aktionen ---------- */
 const A={
   nav(e){const v=e.dataset.v;if(v==='projekte'){ui.open.clear();ui.metric=null}go(v)},
@@ -1333,7 +1420,7 @@ const A={
   finish(){const a=act();a.status='done';saveAct(a,false);toast('Gespeichert');A.backTo()},
   actNew(e){sheetActivity({date:e.dataset.d||today(),projectId:ui.view==='projekt'?ui.proj:lastProject()})},
   actEdit(e){const id=e.dataset.id;sheetActivity({id,...S.activities[id]})},
-  actDel(e){if(!confirmed(e))return;const id=e.dataset.id;put('activities',id,null,false);closeSheet();toast('Aktivität gelöscht');A.backTo()},
+  actDel(e){if(!confirmed(e))return;const id=e.dataset.id;for(const p of S.activities[id]?.photos||[])db?.doc('photos/'+p.id).delete();put('activities',id,null,false);closeSheet();toast('Aktivität gelöscht');A.backTo()},
   quickTitle(e){document.getElementById('a-title').value=e.dataset.t},
   copyPrev(e){const p=S.activities[e.dataset.id],a=act();
     a.exercises=clone(p.exercises||[]).map(x=>({name:x.name,sets:(x.sets||[]).map(()=>({kg:null,reps:null}))}));
@@ -1344,6 +1431,9 @@ const A={
   setDel(e){const a=act();a.exercises[+e.dataset.i].sets.splice(+e.dataset.j,1);saveAct(a)},
   exDel(e){const a=act();a.exercises.splice(+e.dataset.i,1);saveAct(a)},
   exQuick(e){addExercise(e.dataset.n)},
+  phOpen(e){sheetPhoto(e.dataset.aid||ui.act,e.dataset.id)},
+  phDel(e){if(!confirmed(e))return;const{aid,id}=e.dataset,a=clone(S.activities[aid]);
+    a.photos=(a.photos||[]).filter(p=>p.id!==id);db?.doc('photos/'+id).delete();photoFull.delete(id);put('activities',aid,a,false);closeSheet();render();toast('Foto gelöscht')},
   /* Tag */
   jump(e){ui.sel=e.dataset.d;ui.month=null;go('kalender')},
   sel(e){ui.sel=e.dataset.d;ui.month=ui.sel.slice(0,7);render();if(innerWidth<=880)document.getElementById('pane')?.scrollIntoView({block:'start'})},
@@ -1410,6 +1500,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='imp'&&t.files[0])importBackup(t.files[0]);
+  if(t.id==='ph-in'&&t.files.length)addPhotos([...t.files],ui.act);
   if(t.id==='a-rep')document.getElementById('a-cnt-f').hidden=!t.value;
   if(t.id==='a-proj'){const q=document.getElementById('a-quick');if(q)q.innerHTML=quickChips(t.value)}
   if(t.name==='kind'&&t.closest('#sheet')){
@@ -1458,7 +1549,7 @@ const F={
   project(fd,f){
     const name=(fd.get('name')||'').trim(),id=f.dataset.id;if(!name)return;
     const on=fd.getAll('f');
-    setProject(id,{name,color:fd.get('color'),fields:{duration:on.includes('duration'),checklist:on.includes('checklist'),sets:on.includes('sets')},quick:(fd.get('quick')||'').split(',').map(s=>s.trim()).filter(Boolean)});
+    setProject(id,{name,color:fd.get('color'),fields:{duration:on.includes('duration'),checklist:on.includes('checklist'),sets:on.includes('sets'),photos:on.includes('photos')},quick:(fd.get('quick')||'').split(',').map(s=>s.trim()).filter(Boolean)});
     closeSheet();render();toast('Gespeichert');
   },
   group(fd,f){

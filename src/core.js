@@ -29,6 +29,8 @@ const sameName=(a,b)=>String(a).trim().toLowerCase()===String(b).trim().toLowerC
 const shortTitle=t=>{const i=String(t).indexOf(' - ');return i>0?t.slice(i+3):t};
 
 /* ---------- Speicher ---------- */
+const MAX_PHOTOS=12,THUMB=240,PHOTO_LIMIT=900000;
+const canPhoto=()=>PLATFORM.web&&!ui.local&&!!db;
 const COLS=['projects','activities','measurements','dailytasks','dailylog','targets','setbacks'];
 const S=Object.fromEntries(COLS.map(c=>[c,{}]));
 const ui={view:'heute',proj:null,act:null,back:'heute',sel:today(),month:null,dsel:null,edit:false,open:new Set(),metric:null,range:90,ready:false,local:false,stale:false,saveError:false};
@@ -108,9 +110,9 @@ const metricsOf=id=>P(id).metrics||[];
 const groupsOf=id=>P(id).groups||[];
 const metricOf=(pid,id)=>metricsOf(pid).find(x=>x.id===id);
 function fieldsOf(id){
-  if(!hasProject(id))return{checklist:true,duration:true,sets:false};
+  if(!hasProject(id))return{checklist:true,duration:true,sets:false,photos:true};
   const p=P(id),f=p.fields||{};
-  return{checklist:f.checklist!==false,duration:f.duration!==false,sets:f.sets??!!p.training};
+  return{checklist:f.checklist!==false,duration:f.duration!==false,sets:f.sets??!!p.training,photos:f.photos===true};
 }
 const colorOf=id=>P(id).color||'';
 function itemsOf(pid,gid){

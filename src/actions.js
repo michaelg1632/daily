@@ -63,6 +63,63 @@ async function importBackup(file){
   }catch{toast('Diese Datei konnte nicht gelesen werden.')}
 }
 
+/* ---------- Fotos ----------
+   Vorschaubilder liegen klein in der Aktivität. Die großen Fotos liegen einzeln in der Sammlung photos
+   und werden erst beim Öffnen geladen, damit die App schnell bleibt. */
+const photoFull=new Map();
+function readImage(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{res(img);setTimeout(()=>URL.revokeObjectURL(url),1000)};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('bild'))};
+    img.src=url;
+  });
+}
+function paint(img,w,h,sx,sy,sw,sh,q){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(img,sx,sy,sw,sh,0,0,w,h);
+  return c.toDataURL('image/jpeg',q);
+}
+function shrinkPhoto(img){
+  const W=img.naturalWidth,H=img.naturalHeight;
+  for(const[side,q]of[[1600,.8],[1600,.65],[1200,.65],[1000,.55],[800,.5]]){
+    const k=Math.min(1,side/Math.max(W,H)),data=paint(img,Math.round(W*k),Math.round(H*k),0,0,W,H,q);
+    if(data.length<=PHOTO_LIMIT)return data;
+  }
+  throw new Error('gross');
+}
+function thumbOf(img){
+  const W=img.naturalWidth,H=img.naturalHeight,s=Math.min(W,H);
+  return paint(img,THUMB,THUMB,(W-s)/2,(H-s)/2,s,s,.55);
+}
+async function addPhotos(files,aid){
+  const room=MAX_PHOTOS-(S.activities[aid]?.photos||[]).length,list=files.slice(0,Math.max(0,room));
+  if(files.length>list.length)toast(`Pro Aktivität passen ${MAX_PHOTOS} Fotos.`);
+  let ok=0,bad=0;
+  if(list.length)toast(list.length>1?'Fotos werden eingefügt':'Foto wird eingefügt');
+  for(const file of list){
+    try{
+      const img=await readImage(file),data=shrinkPhoto(img),thumb=thumbOf(img),id=uid(),a=S.activities[aid];
+      if(!a)return;
+      await db.doc('photos/'+id).set({activityId:aid,data,at:new Date().toISOString()});
+      photoFull.set(id,data);
+      put('activities',aid,{...clone(S.activities[aid]),photos:[...(S.activities[aid].photos||[]),{id,thumb}]},false);
+      softRender();ok++;
+    }catch{bad++}
+  }
+  if(bad)toast(ok?`${plural(bad,'Foto','Fotos')} konnte nicht eingefügt werden.`:'Das Foto konnte nicht gelesen werden.');
+  else if(ok)toast(plural(ok,'Foto','Fotos')+' gespeichert');
+}
+async function loadPhoto(id){
+  const show=src=>{const i=document.getElementById('pv');if(i?.dataset.id===id&&src)i.src=src};
+  if(photoFull.has(id)){show(photoFull.get(id));return}
+  const say=()=>{const n=document.getElementById('pv-note');if(n&&document.getElementById('pv')?.dataset.id===id){n.textContent='Das ist die Vorschau. Das große Foto lädt, sobald es verfügbar ist.';n.hidden=false}};
+  try{
+    const d=await db.doc('photos/'+id).get();
+    if(d?.data){photoFull.set(id,d.data);show(d.data)}else say();
+  }catch{say()}
+}
+
 /* ---------- Aktionen ---------- */
 const A={
   nav(e){const v=e.dataset.v;if(v==='projekte'){ui.open.clear();ui.metric=null}go(v)},
@@ -79,7 +136,7 @@ const A={
   finish(){const a=act();a.status='done';saveAct(a,false);toast('Gespeichert');A.backTo()},
   actNew(e){sheetActivity({date:e.dataset.d||today(),projectId:ui.view==='projekt'?ui.proj:lastProject()})},
   actEdit(e){const id=e.dataset.id;sheetActivity({id,...S.activities[id]})},
-  actDel(e){if(!confirmed(e))return;const id=e.dataset.id;put('activities',id,null,false);closeSheet();toast('Aktivität gelöscht');A.backTo()},
+  actDel(e){if(!confirmed(e))return;const id=e.dataset.id;for(const p of S.activities[id]?.photos||[])db?.doc('photos/'+p.id).delete();put('activities',id,null,false);closeSheet();toast('Aktivität gelöscht');A.backTo()},
   quickTitle(e){document.getElementById('a-title').value=e.dataset.t},
   copyPrev(e){const p=S.activities[e.dataset.id],a=act();
     a.exercises=clone(p.exercises||[]).map(x=>({name:x.name,sets:(x.sets||[]).map(()=>({kg:null,reps:null}))}));
@@ -90,6 +147,9 @@ const A={
   setDel(e){const a=act();a.exercises[+e.dataset.i].sets.splice(+e.dataset.j,1);saveAct(a)},
   exDel(e){const a=act();a.exercises.splice(+e.dataset.i,1);saveAct(a)},
   exQuick(e){addExercise(e.dataset.n)},
+  phOpen(e){sheetPhoto(e.dataset.aid||ui.act,e.dataset.id)},
+  phDel(e){if(!confirmed(e))return;const{aid,id}=e.dataset,a=clone(S.activities[aid]);
+    a.photos=(a.photos||[]).filter(p=>p.id!==id);db?.doc('photos/'+id).delete();photoFull.delete(id);put('activities',aid,a,false);closeSheet();render();toast('Foto gelöscht')},
   /* Tag */
   jump(e){ui.sel=e.dataset.d;ui.month=null;go('kalender')},
   sel(e){ui.sel=e.dataset.d;ui.month=ui.sel.slice(0,7);render();if(innerWidth<=880)document.getElementById('pane')?.scrollIntoView({block:'start'})},
@@ -156,6 +216,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='imp'&&t.files[0])importBackup(t.files[0]);
+  if(t.id==='ph-in'&&t.files.length)addPhotos([...t.files],ui.act);
   if(t.id==='a-rep')document.getElementById('a-cnt-f').hidden=!t.value;
   if(t.id==='a-proj'){const q=document.getElementById('a-quick');if(q)q.innerHTML=quickChips(t.value)}
   if(t.name==='kind'&&t.closest('#sheet')){
@@ -204,7 +265,7 @@ const F={
   project(fd,f){
     const name=(fd.get('name')||'').trim(),id=f.dataset.id;if(!name)return;
     const on=fd.getAll('f');
-    setProject(id,{name,color:fd.get('color'),fields:{duration:on.includes('duration'),checklist:on.includes('checklist'),sets:on.includes('sets')},quick:(fd.get('quick')||'').split(',').map(s=>s.trim()).filter(Boolean)});
+    setProject(id,{name,color:fd.get('color'),fields:{duration:on.includes('duration'),checklist:on.includes('checklist'),sets:on.includes('sets'),photos:on.includes('photos')},quick:(fd.get('quick')||'').split(',').map(s=>s.trim()).filter(Boolean)});
     closeSheet();render();toast('Gespeichert');
   },
   group(fd,f){

@@ -47,6 +47,15 @@ function sheetProjectNew(){
     <fieldset class="fld"><legend>Womit möchtest du starten?</legend><div class="tpl">${TEMPLATES.map((t,i)=>`<label class="tpl-o"><input type="radio" name="template" value="${t.id}" ${i?'':'checked'}><span><b>${esc(t.name)}</b><small>${esc(t.desc)}</small></span></label>`).join('')}</div></fieldset>
     ${acts2()}</form>`,'#n-name');
 }
+function sheetPhoto(aid,pid){
+  const l=S.activities[aid]?.photos||[],i=l.findIndex(p=>p.id===pid);if(i<0){closeSheet();return}
+  const o=sheetOpener,many=l.length>1,go=d=>`data-aid="${esc(aid)}" data-id="${esc(l[(i+d+l.length)%l.length].id)}"`;
+  openSheet(`<div class="pv-box"><img id="pv" data-id="${esc(pid)}" src="${esc(photoFull.get(pid)||l[i].thumb)}" alt="Foto ${i+1} von ${l.length}"></div>
+    <p class="note flat" id="pv-note" hidden></p>
+    <div class="panel-acts">${delBtn('phDel',`data-aid="${esc(aid)}" data-id="${esc(pid)}"`)}${many?`<button type="button" class="btn ghost" data-a="phOpen" ${go(-1)} aria-label="Vorheriges Foto">‹</button><button type="button" class="btn ghost" data-a="phOpen" ${go(1)} aria-label="Nächstes Foto">›</button>`:''}<button type="button" class="btn" data-a="close">Schließen</button></div>`);
+  if(o)sheetOpener=o;
+  loadPhoto(pid);
+}
 function sheetProject(id){
   const p=P(id),f=fieldsOf(id);
   openSheet(`<h2>Projekt-Einstellungen</h2><form class="form" data-f="project" data-id="${esc(id)}">
@@ -55,7 +64,8 @@ function sheetProject(id){
     <fieldset class="fld"><legend>Felder in Aktivitäten</legend><div class="opts">
       <label class="opt"><input type="checkbox" name="f" value="duration" ${f.duration?'checked':''}><span>Dauer</span></label>
       <label class="opt"><input type="checkbox" name="f" value="checklist" ${f.checklist?'checked':''}><span>Checkliste</span></label>
-      <label class="opt"><input type="checkbox" name="f" value="sets" ${f.sets?'checked':''}><span>Übungen und Sätze</span></label></div></fieldset>
+      <label class="opt"><input type="checkbox" name="f" value="sets" ${f.sets?'checked':''}><span>Übungen und Sätze</span></label>${canPhoto()?`
+      <label class="opt"><input type="checkbox" name="f" value="photos" ${f.photos?'checked':''}><span>Fotos</span></label>`:''}</div></fieldset>
     <div class="fld"><label for="n-quick">Schnellauswahl für Aktivitäten</label><input type="text" id="n-quick" name="quick" value="${esc((p.quick||[]).join(', '))}" autocomplete="off" placeholder="Mit Komma trennen"></div>
     <p class="note flat">Beim Löschen bleiben Aktivitäten im Kalender, gehören dann aber zu keinem Projekt mehr. Ziele und Rückschläge des Projekts werden mitgelöscht.</p>
     ${acts2(delBtn('projectDel',`data-id="${esc(id)}"`))}</form>`);

@@ -25,6 +25,7 @@ function actSummary(a){
   if(a.duration)out.push(a.duration+' Min.');
   if(cl.length)out.push(`${cl.filter(c=>c.done).length} von ${cl.length} Punkten`);
   if(ex.length)out.push(`${plural(ex.length,'Übung','Übungen')}, ${plural(ex.reduce((n,e)=>n+(e.sets||[]).length,0),'Satz','Sätze')}`);
+  if(a.photos?.length)out.push(plural(a.photos.length,'Foto','Fotos'));
   return out.map(x=>`<span>${x}</span>`).join('');
 }
 function actRow(a,when,inProject){
@@ -147,6 +148,12 @@ function checklistBlock(a){
   ${l.map(c=>`<div class="task ${c.done?'done':''}"><button class="box" data-a="clTick" data-c="${c.id}" aria-pressed="${!!c.done}" aria-label="${esc(c.text)} abhaken">${ICON.tick}</button><div class="t-text">${esc(c.text)}</div><button class="x" data-a="clDel" data-c="${c.id}" aria-label="${esc(c.text)} löschen">${ICON.cross}</button></div>`).join('')}
   <form class="addline" data-f="check"><input type="text" id="cl-text" name="text" placeholder="Punkt hinzufügen" aria-label="Punkt hinzufügen" autocomplete="off" required><button class="btn">Hinzufügen</button></form></section>`;
 }
+function photoBlock(a){
+  const l=a.photos||[],full=l.length>=MAX_PHOTOS;
+  return`<section><div class="sec-head"><h2>Fotos</h2>${l.length?`<span class="sec-meta">${l.length} von ${MAX_PHOTOS}</span>`:''}</div>
+  ${l.length?`<div class="ph-grid">${l.map((p,i)=>`<button class="ph" data-a="phOpen" data-id="${esc(p.id)}" aria-label="Foto ${i+1} öffnen"><img src="${esc(p.thumb)}" alt=""></button>`).join('')}</div>`:''}
+  ${full?'':`<label class="btn ghost wide ph-add"><input type="file" id="ph-in" accept="image/*" multiple aria-label="Fotos hinzufügen">Fotos hinzufügen</label>`}</section>`;
+}
 function lastExercise(name,a){
   const l=acts().filter(x=>x.id!==a.id&&x.date<=a.date&&(x.exercises||[]).some(e=>sameName(e.name,name)&&(e.sets||[]).some(s=>s.kg!=null||s.reps!=null))).sort(byTime);
   const p=l[l.length-1];return p?p.exercises.find(e=>sameName(e.name,name)):null;
@@ -193,6 +200,7 @@ function viewActivity(){
     ${f.checklist?checklistBlock(a):''}
     ${f.sets?exerciseBlock(a):''}
     <div class="fld"><label for="a-note">Notiz</label><textarea id="a-note" data-af="note" placeholder="Wie lief es?">${esc(a.note||'')}</textarea></div>
+    ${canPhoto()&&(f.photos||a.photos?.length)?photoBlock(a):''}
     ${st==='done'?'':'<button class="btn" data-a="finish">Als erledigt speichern</button>'}
   </div>`;
 }
